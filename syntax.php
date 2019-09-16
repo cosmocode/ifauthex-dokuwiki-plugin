@@ -85,7 +85,7 @@ class syntax_plugin_ifauthex extends DokuWiki_Syntax_Plugin
     /** @inheritDoc */
     public function render($mode, Doku_Renderer $renderer, $data)
     {
-        list($state, $exprOrMatch) = $data;
+        list($state, $exprOrMatch, $pos) = $data;
 
         // never cache
         $renderer->nocache();
@@ -100,7 +100,13 @@ class syntax_plugin_ifauthex extends DokuWiki_Syntax_Plugin
                     // check if current user should see the content
                     $exprOrMatch = auth_expr_parse($exprOrMatch);
                     $shouldRender = (bool) $exprOrMatch->evaluate();
-                    if(!$shouldRender) {
+                    if(! $shouldRender) {
+                        // modify section pointers
+                        if ($mode === 'xhtml') {
+                            $renderer->finishSectionEdit($pos);
+                            $renderer->startSectionEdit(0, []);
+                        }
+
                         // point the renderer's doc to something else, remembering the old one
                         $this->originalDoc = &$renderer->doc;
                         $ignoredDoc = '';
@@ -119,6 +125,11 @@ class syntax_plugin_ifauthex extends DokuWiki_Syntax_Plugin
             case DOKU_LEXER_EXIT:
                 // point the renderer's doc back to the original
                 if($this->isDiverted) {
+                    // update section pointers
+                    if ($mode === 'xhtml') {
+                        $renderer->finishSectionEdit();
+                        $renderer->startSectionEdit(0, []);
+                    }
                     $renderer->doc = &$this->originalDoc;
                 }
                 break;
